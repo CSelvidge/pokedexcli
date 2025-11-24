@@ -1,19 +1,18 @@
 package repl
 
 import (
-	"fmt"
-	"strings"
 	"bufio"
-	"os"
-	"net/http"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
 )
 
 type cliCommand struct {
 	name        string
 	description string
-	config	  	*locationResponse
-	callback    func() error
+	callback    func(*locationResponse) error
 }
 
 type locationResponse struct {
@@ -32,65 +31,54 @@ var config = &locationResponse{}
 func Start() {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Type 'help' to see available commands.")
-	initConfiguration()
 	initMap()
 	getUserInput()
 }
 
-func initConfiguration() {
-	config.Next = ""
-	config.Previous = ""
-	//Unset until needed
-}
-
 func initMap() {
 	commandDictionary["exit"] = cliCommand{
-		name: "exit",
+		name:        "exit",
 		description: "Exit the Pokedex CLI",
-		config: config,
-		callback: commandExit,
+		callback:    commandExit,
 	}
 	commandDictionary["help"] = cliCommand{
-		name: "help",
+		name:        "help",
 		description: "List all available commands",
-		config: config,
-		callback: commandHelp,
+		callback:    commandHelp,
 	}
 	commandDictionary["map"] = cliCommand{
-		name: "map",
+		name:        "map",
 		description: "Show locations to travel to",
-		config: config,
-		callback: commandMap,
+		callback:    commandMap,
 	}
 	commandDictionary["mapb"] = cliCommand{
-		name: "mapb",
+		name:        "mapb",
 		description: "Show previous locations",
-		config: config,
-		callback: commandMapb,
+		callback:    commandMapb,
 	}
 }
 
 func getUserInput() {
-		scanner := bufio.NewScanner(os.Stdin)
-		fmt.Printf("Pokedex >")
-		for scanner.Scan(){		
-			input := cleanInput(scanner.Text())
-			if len(input) == 0 {
-				fmt.Println("Please enter atleast one character")
-				fmt.Printf("Pokedex >")
-				continue
-			}
-			commandName := input[0]
-			command, exists := commandDictionary[commandName]
-			if !exists {
-				fmt.Printf("Unknown command: %s\n", commandName)
-				fmt.Printf("Pokedex >")
-				continue
-			}
-			command.callback()
+	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Printf("Pokedex >")
+	for scanner.Scan() {
+		input := cleanInput(scanner.Text())
+		if len(input) == 0 {
+			fmt.Println("Please enter at least one character")
 			fmt.Printf("Pokedex >")
+			continue
 		}
-	
+		commandName := input[0]
+		command, exists := commandDictionary[commandName]
+		if !exists {
+			fmt.Printf("Unknown command: %s\n", commandName)
+			fmt.Printf("Pokedex >")
+			continue
+		}
+		command.callback(config)
+		fmt.Printf("Pokedex >")
+	}
+
 }
 
 func cleanInput(input string) []string {
@@ -98,16 +86,16 @@ func cleanInput(input string) []string {
 	trimmed := strings.TrimSpace(lowered)
 	words := strings.Fields(trimmed)
 
-    return words
+	return words
 }
 
-func commandExit() error {
+func commandExit(cfg *locationResponse) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp() error {
+func commandHelp(cfg *locationResponse) error {
 	fmt.Println("Available commands:")
 	for _, cmd := range commandDictionary {
 		fmt.Printf(" - %s: %s\n", cmd.name, cmd.description)
@@ -115,42 +103,48 @@ func commandHelp() error {
 	return nil
 }
 
-func commandMap() error {
+func commandMap(cfg *locationResponse) error {
 	url := ""
-	if config.Next == "" {
+	if cfg.Next == "" {
 		url = "https://pokeapi.co/api/v2/location-area"
 	} else {
-		url = config.Next
+		url = cfg.Next
 	}
-	
-	genericURLCaller(url)
 
-	for _, location := range config.Results {
+	if err := genericURLCaller(url, cfg); err != nil {
+		fmt.Printf("Error fetching locations: %v\n", err)
+		return err
+	}
+
+	for _, location := range cfg.Results {
 		fmt.Printf("%s\n", location.Name)
 	}
 
 	return nil
 }
 
-func commandMapb() error {
+func commandMapb(cfg *locationResponse) error {
 	url := ""
-	if config.Previous == "" {
+	if cfg.Previous == "" {
 		fmt.Println("No previous locations available. You must advance at least once first.")
 		return nil
-	}else {
-		url = config.Previous
+	} else {
+		url = cfg.Previous
 	}
 
-	genericURLCaller(url)
+	if err := genericURLCaller(url, cfg); err != nil {
+		fmt.Printf("Error fetching locations: %v\n", err)
+		return err
+	}
 
-	for _, location := range config.Results {
+	for _, location := range cfg.Results {
 		fmt.Printf("%s\n", location.Name)
 	}
 
 	return nil
 }
 
-func genericURLCaller(url string) error {
+func genericURLCaller(url string, cfg *locationResponse) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -158,8 +152,8 @@ func genericURLCaller(url string) error {
 	defer resp.Body.Close()
 
 	dec := json.NewDecoder(resp.Body)
-	if err := dec.Decode(&config); err != nil {
-		return  err
+	if err := dec.Decode(cfg); err != nil {
+		return err
 	}
 
 	return nil

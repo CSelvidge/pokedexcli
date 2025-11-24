@@ -10,23 +10,23 @@ func TestCleanInput(t *testing.T) {
 		expected []string
 	}{
 		{
-			input: " hello world ",
+			input:    " hello world ",
 			expected: []string{"hello", "world"},
 		},
 		{
-			input: "  GoLang  is  Awesome ",
+			input:    "  GoLang  is  Awesome ",
 			expected: []string{"golang", "is", "awesome"},
 		},
 		{
-			input: "",
+			input:    "",
 			expected: []string{},
 		},
 		{
-			input: "   ",
+			input:    "   ",
 			expected: []string{},
 		},
 	}
-		//further test cases can be added here (check for empty strings as well!)
+	//further test cases can be added here (check for empty strings as well!)
 
 	for _, c := range cases {
 		actual := cleanInput(c.input)
@@ -40,7 +40,7 @@ func TestCleanInput(t *testing.T) {
 			word := actual[i]
 			expectedWord := c.expected[i]
 			if word != expectedWord {
-				t.Errorf("Expected the word %q in position %d, received %q, from the original %q", expectedWord, i + 1, word, c.input)
+				t.Errorf("Expected the word %q in position %d, received %q, from the original %q", expectedWord, i+1, word, c.input)
 			}
 		}
 	}
