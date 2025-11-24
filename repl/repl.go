@@ -123,18 +123,7 @@ func commandMap() error {
 		url = config.Next
 	}
 	
-	resp, err := http.Get(url)
-	if err != nil {
-		fmt.Println("Error fetching map data:", err)
-		return err
-	}
-	defer resp.Body.Close()
-
-	dec := json.NewDecoder(resp.Body)
-	if err := dec.Decode(&config); err != nil {
-		fmt.Println("Error decoding map data", err)
-		return err
-	}
+	genericURLCaller(url)
 
 	for _, location := range config.Results {
 		fmt.Printf("%s\n", location.Name)
@@ -152,21 +141,25 @@ func commandMapb() error {
 		url = config.Previous
 	}
 
+	genericURLCaller(url)
+
+	for _, location := range config.Results {
+		fmt.Printf("%s\n", location.Name)
+	}
+
+	return nil
+}
+
+func genericURLCaller(url string) error {
 	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Println("Error fetching map data:", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&config); err != nil {
-		fmt.Println("Error decoding map data", err)
-		return err
-	}
-
-	for _, location := range config.Results {
-		fmt.Printf("%s\n", location.Name)
+		return  err
 	}
 
 	return nil
