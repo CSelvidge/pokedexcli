@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/CSelvidge/pokedexcli/repl"
+	"github.com/CSelvidge/pokedexcli/internal/repl"
 )
 
 func main() {
