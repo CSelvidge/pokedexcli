@@ -1,23 +1,23 @@
 package pokecache
 
 import (
+	"errors"
 	"sync"
 	"time"
-	"errors"
 )
 
 type Cache struct {
-	cache map[string]cacheEntry
+	cache         map[string]cacheEntry
 	intervalTimer time.Duration //time cache is alloweed to live
-	mu  *sync.RWMutex //RWMutex for concurrent access
+	mu            *sync.RWMutex //RWMutex for concurrent access
 }
 
 type cacheEntry struct {
 	createdAt time.Time
-	val []byte //can be any data that can be marshaled into bytes
+	val       []byte //can be any data that can be marshaled into bytes
 }
 
-func NewCache(durationType string,  durationLife int ) (*Cache, error) {
+func NewCache(durationType string, durationLife int) (*Cache, error) {
 	invalidDurationType := errors.New("invalid duration type provided")
 	valueIsNil := errors.New("One or more values provided are nil")
 
@@ -27,8 +27,8 @@ func NewCache(durationType string,  durationLife int ) (*Cache, error) {
 
 	durationMap := map[string]time.Duration{
 		"second": time.Second,
-		"minute":  time.Minute,
-		"hour":    time.Hour, //program will not live long enough for this to work, but included for fun
+		"minute": time.Minute,
+		"hour":   time.Hour, //program will not live long enough for this to work, but included for fun
 	}
 
 	timeVersion, exists := durationMap[durationType]
@@ -37,9 +37,9 @@ func NewCache(durationType string,  durationLife int ) (*Cache, error) {
 	}
 
 	c := &Cache{
-		cache: make(map[string]cacheEntry),
+		cache:         make(map[string]cacheEntry),
 		intervalTimer: time.Duration(durationLife) * timeVersion,
-		mu:   &sync.RWMutex{}, 
+		mu:            &sync.RWMutex{},
 	}
 
 	go c.reapLoop() //start the reaping loop immediately after cache creation to begin cuncurrent reaping
@@ -51,7 +51,7 @@ func NewCache(durationType string,  durationLife int ) (*Cache, error) {
 func (c *Cache) Add(key string, val []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.cache[key] = cacheEntry{
 		createdAt: time.Now(),
 		val:       val,
@@ -61,7 +61,7 @@ func (c *Cache) Add(key string, val []byte) {
 func (c *Cache) Get(key string) ([]byte, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	entry, exists := c.cache[key]
 	if !exists {
 		return nil, false

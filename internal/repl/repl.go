@@ -2,50 +2,21 @@ package repl
 
 import (
 	"bufio"
-	"github.com/CSelvidge/pokedexcli/internal/pokecache"
-	"encoding/json"
 	"fmt"
-	"net/http"
+	"github.com/CSelvidge/pokedexcli/internal/pokecache"
 	"os"
-	"strings"
 	"strconv"
+	"strings"
 )
 
-type cliCommand struct {
-	name        string
-	description string
-	callback    func(*locationResponse) error
-}
-
-type locationResponse struct {
-	Count    int    `json:"count"`
-	Next     string `json:"next"`
-	Previous string `json:"previous"`
-	Results  []struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"results"`
-}
-
 var commandDictionary = make(map[string]cliCommand)
-var config = &locationResponse{}
-var cache = &pokecache.Cache{}
 
-func Start() {
+func Start(cache *pokecache.Cache) {
 	fmt.Println("Welcome to the Pokedex!")
-	initCache()
 	fmt.Println("Type 'help' to see available commands.")
 	initMap()
-	getUserInput()
-}
-
-func initCache() {
-var err error
-cache, err = pokecache.NewCache(getCacheSettings())
-if err != nil {
-	fmt.Printf("Error initializing cache: %v\n", err)
-os.Exit(1)
-}
+	cfg := newConfig(cache)
+	getUserInput(cfg)
 }
 
 func initMap() {
@@ -69,17 +40,30 @@ func initMap() {
 		description: "Show previous locations",
 		callback:    commandMapb,
 	}
+	commandDictionary["explore"] = cliCommand{
+		name:        "explore",
+		description: "Explore location to find Pokemon! Usage is `explore <location-name>`",
+		callback:    commandExplore,
+	}
 }
 
+func newConfig(cache *pokecache.Cache) *config {
+	cfg := &config{
+		nextLocationsURL:     "",
+		previousLocationsURL: "",
+		cache:                cache,
+	}
+	return cfg
+}
 
-func getCacheSettings() (Type string, Life int) {
+func GetCacheSettings() (Type string, Life int) {
 	durationType := ""
 	durationLife := 0
 	plural := "s"
 
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Printf("Enter cache duration type (eg: Seconds, Minutes, Hours) below:\n")
-	fmt.Printf("pokedex >")
+	fmt.Printf("Pokedex >")
 	for scanner.Scan() {
 		durationInput := cleanInput(scanner.Text())
 		if len(durationInput) == 0 {
@@ -105,7 +89,7 @@ func getCacheSettings() (Type string, Life int) {
 	}
 
 	fmt.Printf("Enter cache life duration in number of %s below, only integers are accepted:\n", durationType)
-	fmt.Printf("pokedex >")
+	fmt.Printf("Pokedex >")
 	for scanner.Scan() {
 		lifeInput := cleanInput(scanner.Text())
 		if len(lifeInput) == 0 {
@@ -123,12 +107,12 @@ func getCacheSettings() (Type string, Life int) {
 			plural = ""
 		}
 		fmt.Printf("%d %s%s set for cache duration life.\n", durationLife, durationType, plural)
-	break
+		break
 	}
 	return durationType, durationLife
 }
 
-func getUserInput() {
+func getUserInput(cfg *config) {
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Printf("Pokedex >")
 	for scanner.Scan() {
@@ -138,17 +122,20 @@ func getUserInput() {
 			fmt.Printf("Pokedex >")
 			continue
 		}
+
 		commandName := input[0]
+		commandArgs := input[1:] //Future proofing for multiple arguments
+
 		command, exists := commandDictionary[commandName]
+
 		if !exists {
 			fmt.Printf("Unknown command: %s\n", commandName)
 			fmt.Printf("Pokedex >")
 			continue
 		}
-		command.callback(config)
+		executeCommand(cfg, command, commandArgs)
 		fmt.Printf("Pokedex >")
 	}
-
 }
 
 func cleanInput(input string) []string {
@@ -159,85 +146,14 @@ func cleanInput(input string) []string {
 	return words
 }
 
-func commandExit(cfg *locationResponse) error {
-	fmt.Println("Closing the Pokedex... Goodbye!")
-	os.Exit(0)
-	return nil
-}
-
-func commandHelp(cfg *locationResponse) error {
-	fmt.Println("Available commands:")
-	for _, cmd := range commandDictionary {
-		fmt.Printf(" - %s: %s\n", cmd.name, cmd.description)
-	}
-	return nil
-}
-
-func commandMap(cfg *locationResponse) error {
-	url := ""
-	if cfg.Next == "" {
-		url = "https://pokeapi.co/api/v2/location-area"
-	} else {
-		url = cfg.Next
+func executeCommand(cfg *config, command cliCommand, args []string) { //input sanitized in function that called, so we know command is valid
+	var arguments string //if multiple aruguments are needed in the future this will need to be changed to a slice
+	if len(args) > 0 {
+		arguments = args[0] //should only ever get 1 argument, but this allows for easier future proofing if more args are needed
 	}
 
-	if err := genericURLCaller(url, cfg); err != nil {
-		fmt.Printf("Error fetching locations: %v\n", err)
-		return err
-	}
-
-	for _, location := range cfg.Results {
-		fmt.Printf("%s\n", location.Name)
-	}
-
-	return nil
-}
-
-func commandMapb(cfg *locationResponse) error {
-	url := ""
-	if cfg.Previous == "" {
-		fmt.Println("No previous locations available. You must advance at least once first.")
-		return nil
-	} else {
-		url = cfg.Previous
-	}
-
-	if err := genericURLCaller(url, cfg); err != nil {
-		fmt.Printf("Error fetching locations: %v\n", err)
-		return err
-	}
-
-	for _, location := range cfg.Results {
-		fmt.Printf("%s\n", location.Name)
-	}
-
-	return nil
-}
-
-func genericURLCaller(url string, cfg *locationResponse) error {
-	val, exists := cache.Get(url)
-	if exists {
-		if err := json.Unmarshal(val, cfg); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	resp, err := http.Get(url)
+	err := command.callback(cfg, arguments) //functions are variadic, so arguments can be empty
 	if err != nil {
-		return err
+		fmt.Printf("Error executing command %s: %v\n", command.name, err)
 	}
-	defer resp.Body.Close()
-
-	dec := json.NewDecoder(resp.Body)
-	if err := dec.Decode(cfg); err != nil {
-		return err
-	}
-
-	data, err := json.Marshal(cfg)
-	if err != nil {
-		return err
-	}
-	cache.Add(url, data)
-	return nil
 }
