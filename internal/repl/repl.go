@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/CSelvidge/pokedexcli/internal/pokecache"
+	"github.com/CSelvidge/pokedexcli/internal/actors"
 	"os"
 	"strconv"
 	"strings"
@@ -11,11 +12,11 @@ import (
 
 var commandDictionary = make(map[string]cliCommand)
 
-func Start(cache *pokecache.Cache) {
+func Start(cache *pokecache.Cache, user *actors.User) {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Type 'help' to see available commands.")
 	initMap()
-	cfg := newConfig(cache)
+	cfg := newConfig(cache, user)
 	getUserInput(cfg)
 }
 
@@ -45,13 +46,36 @@ func initMap() {
 		description: "Explore location to find Pokemon! Usage is `explore <location-name>`",
 		callback:    commandExplore,
 	}
+	commandDictionary["catch"] = cliCommand{
+		name:        "catch",
+		description: "Catch a Pokemon! Usage is `catch <pokemon-name>`",
+		callback:    commandCatch,
+	}
+	commandDictionary["inspect"] = cliCommand{
+		name: "inspect",
+		description: "Brief inspection of caught pokemon Usage is `inspect <pokemon-name>`",
+		callback: commandInspect,
+	}
+	commandDictionary["fullinspect"] = cliCommand{
+		name: "fullinspect",
+		description: "Inspect all stored stats for caught pokemon. Usage is same as inspect.",
+		callback: commandFullInspect,
+	}
+	commandDictionary["pokedex"] = cliCommand{
+		name: "pokedex",
+		description: "list all caught pokemon",
+		callback: commandPokedex,
+	}
 }
 
-func newConfig(cache *pokecache.Cache) *config {
+func newConfig(cache *pokecache.Cache, user *actors.User) *config {
 	cfg := &config{
 		nextLocationsURL:     "",
 		previousLocationsURL: "",
+		currentLocation:      "",
+		currentLocationURL:   "",
 		cache:                cache,
+		user:                 user,
 	}
 	return cfg
 }

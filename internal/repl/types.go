@@ -2,6 +2,7 @@ package repl
 
 import (
 	"github.com/CSelvidge/pokedexcli/internal/pokecache"
+	"github.com/CSelvidge/pokedexcli/internal/actors"
 )
 
 type cliCommand struct {
@@ -13,7 +14,10 @@ type cliCommand struct {
 type config struct {
 	nextLocationsURL     string
 	previousLocationsURL string
+	currentLocation	 string
+	currentLocationURL  string
 	cache                *pokecache.Cache
+	user				 *actors.User
 }
 
 type locationResponse struct {
