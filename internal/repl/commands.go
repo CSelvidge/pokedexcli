@@ -114,7 +114,10 @@ func commandCatch(cfg *config, args ...string) error {
 		return nil
 	}
 
-	
+	if cfg.currentLocationURL == "" {
+		return fmt.Errorf("You are in the starting area, please advance and explore a location to begin.")
+	}
+
 	pokemonName := args[0]
 	exists, err := pokemonStreamingCheck(cfg, pokemonName)
 	if !exists {
@@ -217,7 +220,7 @@ func commandFullInspect(cfg *config, args ...string) error {
 
 func commandPokedex(cfg *config, args ...string) error {
 	if len(cfg.user.CaughtPokemon) <= 0 {
-		return fmt.Errorf("You have not caught any pokemon.")
+		return fmt.Errorf("You have not caught any pokemon")
 	}
 	fmt.Printf("Your pokedex:\n")
 	for _, pokemon := range cfg.user.CaughtPokemon {

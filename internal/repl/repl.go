@@ -178,6 +178,6 @@ func executeCommand(cfg *config, command cliCommand, args []string) { //input sa
 
 	err := command.callback(cfg, arguments) //functions are variadic, so arguments can be empty
 	if err != nil {
-		fmt.Printf("Error executing command %s: %v\n", command.name, err)
+		fmt.Printf("%v\n", err)
 	}
 }
