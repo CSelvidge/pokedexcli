@@ -97,10 +97,10 @@ func GetCacheSettings() (Type string, Life int) {
 
 		switch durationInput[0] {
 		case "seconds", "second", "s":
-			fmt.Printf("Duration type set to Seconds\n")
+			fmt.Printf("Duration type set to Seconds.\n")
 			durationType = "second"
 		case "minutes", "minute", "m":
-			fmt.Printf("Duration type set to Minutes\n")
+			fmt.Printf("Duration type set to Minutes.\n")
 			durationType = "minute"
 		case "hours", "hour", "h":
 			fmt.Printf("Duration type set to Hours, however this type is for fun and cache should not live this long.\n")

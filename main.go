@@ -24,8 +24,7 @@ func main() {
 
 func initCache() (*pokecache.Cache, error) {
 	var err error
-	cache, err := pokecache.NewCache("minute", 5)
-	//cache, err := pokecache.NewCache(repl.GetCacheSettings())
+	cache, err := pokecache.NewCache(repl.GetCacheSettings())
 	if err != nil {
 		fmt.Printf("Error initializing cache: %v\n", err)
 		return nil, err
